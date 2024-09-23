@@ -107,9 +107,9 @@ def train_test_split(X, train_size, random_state = None, shuffle = True):
     if shuffle: 
         np.random.shuffle(indices)
     
-    #Split indices for train and test values
-    test_indices = indices[:m_test] #values up to the number of wanted test values
-    train_indices = indices[m_test:]
+      #Split indices for train and test values
+    train_indices = indices[:m_test] #values up to the number of wanted test values
+    test_indices = indices[m_test:]
 
     #Return data in the form of X_train, X_test, y_train, y_test
     return X[train_indices], X[test_indices]
