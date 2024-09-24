@@ -3,11 +3,6 @@
 import numpy as np #Only np allowed, to speed up computational time for linalg computations
 import math
 
-class Layer:
-    def __init__(self):
-        self.input = None
-        self.output = None
-
 # Linear activation
 def linear(z: np.ndarray) -> np.ndarray:
     return z
@@ -19,6 +14,32 @@ def relu(z: np.ndarray) -> np.ndarray:
 # Relu prime (derivative for backprop)
 def relu_prime(z: np.ndarray) -> np.ndarray:
     return np.where(z > 0, 1, 0) # If z > 0, element is 1, else element is 0
+
+def init_params(layer_dimensions: list) -> dict:
+    '''
+    Inputs:
+    layer_dimensions -- array containing the dimensions of each layer in the NN
+
+    Outputs:
+    params -- dictionary of params (W1, b1, W2, b2, ...)
+    '''
+    np.random.seed(3)
+    params = {}
+    L = len(layer_dimensions) # Number of layers in NN
+
+    for layer in range(1, L):
+        # Weight (strength of the connection from neuron j to i) matrix. Generates a matrix of shape[num units in current layer, num units in prev layer]
+        # Scaled by He initialization for ReLU, maintaining variance of activations across layers
+        # NOTE: using np.random because np.zeros initialization will cause symmetry - gradients by backprop all = 0
+        params[f'W{layer}'] = np.random.randn(int(layer_dimensions[layer]), int(layer_dimensions[layer-1])) * np.sqrt(2. / int(layer_dimensions[layer-1])) 
+
+        # Bias matrix. Generates a matrix of shape[num units in current layer, 1 value]
+        params[f'b{layer}'] = np.zeros((int(layer_dimensions[layer]), 1)) 
+
+        assert params['W' + str(layer)].shape[0] == int(layer_dimensions[layer]), int(layer_dimensions[layer-1])
+        assert params['W' + str(layer)].shape[0] == int(layer_dimensions[layer]), 1
+        
+    return params
     
 # Dense (forward prop layer)
 def Dense(a_in, W, b, g):
@@ -40,7 +61,7 @@ def Dense(a_in, W, b, g):
     return a_out
 
 # Forward prop
-def ForwardProp(a_in: np.ndarray, params: list, activation: callable, layer: int, cache = dict()):
+def ForwardProp(a_in: np.ndarray, params: list, activation: callable, layer: int, cache = dict()) -> tuple[np.ndarray, dict]:
     # Retrieve the parameters
     W, b = params
 
@@ -48,6 +69,7 @@ def ForwardProp(a_in: np.ndarray, params: list, activation: callable, layer: int
     z = np.dot(W, a_in) + b
     a_out = activation(z)
 
+    # Store the cache values to use in backprop
     cache[f'Z{layer}'] = z
     cache[f'A{layer}'] = a_out
     cache[f'W{layer}'] = W
@@ -56,7 +78,7 @@ def ForwardProp(a_in: np.ndarray, params: list, activation: callable, layer: int
     return a_out, cache
 
 # MSE Cost Function
-def MSECost(a_out, Y):
+def MSECost(a_out: np.ndarray, Y: np.ndarray) -> float:
     '''
     Compute mean squared error cost function
 
@@ -75,7 +97,7 @@ def MSECost(a_out, Y):
     return (cost / (2*m))
 
 # Back propagation implementation to get gradients
-def Backprop(a_in, Y, cache):
+def Backprop(a_in: np.ndarray, Y: np.ndarray, cache: dict) -> dict:
     '''
     Arguments:
     a_in -- input dataset, of shape (input size, number of examples)
@@ -88,7 +110,7 @@ def Backprop(a_in, Y, cache):
     '''
     gradients = {}
     L = len(cache) // 4 # num of layers
-    m = a_in.shape[1] #num of exs
+    m = a_in.shape[0] #num of exs
 
     # Initialize the gradient for the last layer
     dA_prev = (1./m * cache[f'A{L}'] - Y)
@@ -111,26 +133,33 @@ def Backprop(a_in, Y, cache):
 
     return gradients
 
-def generate_minibatches(X, Y, mini_batch_size = 128, seed = 0):
+def generate_minibatches(X: np.ndarray, Y: np.ndarray, mini_batch_size = 64, seed = 0) -> list:
     '''
     Generate a list of random minibatches from (X, Y)
 
     Inputs:
-    X -- input data, shape[input size, num of exs]
-    Y -- true 'label' vector
+    X -- input data, shape[num of exs, input size]
+    Y -- true 'label' vector (ratings), of shape (num of exs, 1)
 
-    m/mini_batch_size mini-batches with full 128 exs
-    final minibatch if there isn't 128 is (m - mini_batch_size * m/mini_batch_size)
+    m/mini_batch_size mini-batches with full 64 exs
+    final minibatch if there isn't 64 is (m - mini_batch_size * m/mini_batch_size)
     mini_batch_X = shuffled_X[:, i:j]
     '''
     np.random.seed(seed)
-    m = X.shape[1]
+    m = X.shape[0]
     mini_batches = []
 
+    print(X.shape)
+    print(Y.shape)
+
     # Shuffle X, Y
-    permutation = list(np.random.permutation(m))
-    shuffled_X = X[:, permutation]
-    shuffled_Y = Y[:, permutation].reshape((1,m))
+    # permutation = list(np.random.permutation(m))
+    try:
+        permutation = list(np.random.permutation(m))
+        shuffled_X = X[permutation, :]
+        shuffled_Y = Y[permutation, :].reshape((m, 1)) #Y is 1D
+    except IndexError as e:
+        print("Error: ", e)
 
     inc = mini_batch_size
 
@@ -138,22 +167,22 @@ def generate_minibatches(X, Y, mini_batch_size = 128, seed = 0):
     num_minibatches = math.floor(m / mini_batch_size)
     for k in range(0, num_minibatches): #Create a counter to count the minibatches without repeating
         # By formula given above
-        mini_batch_X = shuffled_X[:, k*mini_batch_size : (k+1)*mini_batch_size]
-        mini_batch_Y = shuffled_Y[:, k*mini_batch_size : (k+1)*mini_batch_size]
+        mini_batch_X = shuffled_X[k*mini_batch_size : (k+1)*mini_batch_size, :]
+        mini_batch_Y = shuffled_Y[k*mini_batch_size : (k+1)*mini_batch_size, :]
         mini_batch = (mini_batch_X, mini_batch_Y) #Grouping
         mini_batches.append(mini_batch)
 
     #Handling the case where the last mini-batch may < mini_batch_size
     if m % mini_batch_size != 0:
         # Apply the "last batch" formula
-        mini_batch_X = shuffled_X[:, int(m/mini_batch_size)*mini_batch_size:]
-        mini_batch_Y = shuffled_Y[:, int(m/mini_batch_size)*mini_batch_size:]
+        mini_batch_X = shuffled_X[int(m/mini_batch_size)*mini_batch_size:, :]
+        mini_batch_Y = shuffled_Y[int(m/mini_batch_size)*mini_batch_size:, :]
         mini_batch = (mini_batch_X, mini_batch_Y) #Grouping
         mini_batches.append(mini_batch)
 
     return mini_batches
     
-def gradient_descent(params, gradients, learning_rate = 0.001, num_layers = 3):
+def gradient_descent(params: dict, gradients: dict, learning_rate = 0.001, num_layers = 3) -> dict:
     L = len(params) // num_layers #num of layers in NN's
 
     # Update rule for each parameter
