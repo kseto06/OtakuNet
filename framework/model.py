@@ -63,9 +63,16 @@ def Dense(a_in, W, b, g):
 # Forward prop
 def ForwardProp(a_in: np.ndarray, params: list, activation: callable, layer: int, cache = dict()) -> tuple[np.ndarray, dict]:
     # Retrieve the parameters
-    W, b = params
+    W = params[f'W{layer}']
+    b = params[f'b{layer}']
+
+    # print(f"Layer {layer}: W shape = {W.shape}, b shape = {b.shape}")
 
     # Compute forward prop
+    if layer == 1: #Transpose the first layer
+        a_in = a_in.transpose()
+    
+    # print(f"After transposing: a_in shape = {a_in.shape}")
     z = np.dot(W, a_in) + b
     a_out = activation(z)
 
@@ -89,6 +96,13 @@ def MSECost(a_out: np.ndarray, Y: np.ndarray) -> float:
     Output:
     Cost = loss
     '''
+    # Transpose back a_out
+    a_out = a_out.transpose()
+
+    if a_out.shape != Y.shape:
+        print("a_out shape: ",a_out.shape)
+        print("Y shape: ", Y.shape)
+
     m = a_out.shape[0] #num of training examples
     cost = 0.
     for i in range(m):
@@ -112,6 +126,9 @@ def Backprop(a_in: np.ndarray, Y: np.ndarray, cache: dict) -> dict:
     L = len(cache) // 4 # num of layers
     m = a_in.shape[0] #num of exs
 
+    # Transpose Y for consistent shapes
+    Y = Y.transpose()
+
     # Initialize the gradient for the last layer
     dA_prev = (1./m * cache[f'A{L}'] - Y)
 
@@ -122,14 +139,14 @@ def Backprop(a_in: np.ndarray, Y: np.ndarray, cache: dict) -> dict:
         if (layer > 1):
             dW = np.dot(dZ, cache[f'A{layer - 1}'].T)
         else: 
-            dW = np.dot(dZ, a_in.T)
+            dW = np.dot(dZ, a_in)
         dB = np.sum(dZ, axis=1, keepdims=True)
         dA_prev = np.dot(cache[f'W{layer}'].T, dZ)
 
         #Storing the gradients:
         gradients[f'dZ{layer}'] = dZ
         gradients[f'dW{layer}'] = dW
-        gradients[f'dB{layer}'] = dB
+        gradients[f'db{layer}'] = dB
 
     return gradients
 
@@ -149,8 +166,8 @@ def generate_minibatches(X: np.ndarray, Y: np.ndarray, mini_batch_size = 64, see
     m = X.shape[0]
     mini_batches = []
 
-    print(X.shape)
-    print(Y.shape)
+    if (X.shape[0] != Y.shape[0]):
+        print(f'X: {X.shape} != Y: {Y.shape}')
 
     # Shuffle X, Y
     # permutation = list(np.random.permutation(m))
