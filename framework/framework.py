@@ -113,3 +113,11 @@ def train_test_split(X, train_size, random_state = None, shuffle = True):
 
     #Return data in the form of X_train, X_test, y_train, y_test
     return X[train_indices], X[test_indices]
+
+# L2 Normalization Formula
+def l2_normalize(vector: np.ndarray, axis: int) -> np.ndarray:
+    # Normalize the vector
+    l2_norm = np.sqrt(np.sum(np.power(vector, 2), axis=axis, keepdims=True))
+    # Transform into a unit vector
+    normalized_vector = vector / l2_norm
+    return normalized_vector
