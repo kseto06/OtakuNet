@@ -199,6 +199,7 @@ def generate_minibatches(X: np.ndarray, Y: np.ndarray, mini_batch_size = 64, see
 
     return mini_batches
     
+# Function to perform one update step (epoch) of gradient descent
 def gradient_descent(params: dict, gradients: dict, learning_rate = 0.001, num_layers = 3) -> dict:
     L = len(params) // num_layers #num of layers in NN's
 
@@ -208,3 +209,58 @@ def gradient_descent(params: dict, gradients: dict, learning_rate = 0.001, num_l
         params[f'b{l}'] = params[f'b{l}'] - learning_rate*gradients[f'db{l}']
         
     return params
+
+# Function to initialize the parameters for the gradient and squared gradient
+def init_Adam(params: dict) -> tuple[dict, dict]:
+    L = len(params) // 2
+    v = {}
+    s = {}
+
+    for l in range(L):
+        v[f'dW{l+1}'] = np.zeros((params[f'W{l+1}'].shape[0], params[f'W{l+1}'].shape[1]))
+        v[f'db{l+1}'] = np.zeros((params[f'b{l+1}'].shape[0], params[f'b{l+1}'].shape[1]))
+        s[f'dW{l+1}'] = np.zeros((params[f'W{l+1}'].shape[0], params[f'W{l+1}'].shape[1]))
+        s[f'db{l+1}'] = np.zeros((params[f'b{l+1}'].shape[0], params[f'b{l+1}'].shape[1]))
+
+    return v, s
+
+def Adam(params: dict, gradients: dict, v: dict, s: dict, t: float, learning_rate: float, beta1: float, beta2: float, epsilon: float) -> tuple[dict, dict, dict, dict, dict]:
+    '''
+    Function inspired by the formulae/procedure described in Andrew Ng's DL Course
+
+    v: moving avg of first grad
+    s: moving avg of squared grad
+    '''
+    if t < 0:
+        print(f't = {t}. t must be greater than 0')
+
+    L = len(params) // 2
+    v_corrected = {}
+    s_corrected = {}
+    
+    # Perform Adam update
+    for l in range(L):
+        # print(beta1)
+        # print(beta2)
+        # print(1-np.power(beta1, t))
+
+        # Calculate momentums with beta1
+        v[f'dW{l+1}'] = beta1 * v[f'dW{l+1}'] + (1-beta1) * gradients[f'dW{l+1}']
+        v[f'db{l+1}'] = beta1 * v[f'db{l+1}'] + (1-beta1) * gradients[f'db{l+1}']
+
+        # Calculate corrected v values:
+        v_corrected[f'dW{l+1}'] = v[f'dW{l+1}'] / (1-np.power(beta1, t))
+        v_corrected[f'db{l+1}'] = v[f'db{l+1}'] / (1-np.power(beta1, t))
+
+        # Calculate the RMSProps with beta2
+        s[f'dW{l+1}'] = beta2 * s[f'dW{l+1}'] + (1-beta2) * np.square(gradients[f'dW{l+1}'])
+        s[f'db{l+1}'] = beta2 * s[f'db{l+1}'] + (1-beta2) * np.square(gradients[f'db{l+1}'])
+
+        # Calculate corrected s values:
+        s_corrected[f'dW{l+1}'] = s[f'dW{l+1}'] / (1-np.power(beta2, t))
+        s_corrected[f'db{l+1}'] = s[f'db{l+1}'] / (1-np.power(beta2, t))
+
+        params[f'W{l+1}'] = params[f'W{l+1}'] - learning_rate * v_corrected[f'dW{l+1}'] / (np.sqrt(s_corrected[f'dW{l+1}'])+epsilon)
+        params[f'b{l+1}'] = params[f'b{l+1}'] - learning_rate * v_corrected[f'db{l+1}'] / (np.sqrt(s_corrected[f'db{l+1}'])+epsilon)
+
+    return params, v, s, v_corrected, s_corrected

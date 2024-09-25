@@ -7,7 +7,8 @@ class Sequential:
 
     # Sequential model that puts calculations together
     @staticmethod
-    def Sequential(X: np.ndarray, Y: np.ndarray, params: dict, learning_rate = None, cache = None) -> tuple[np.ndarray, dict, float, dict]:
+    def Sequential(X: np.ndarray, Y: np.ndarray, params: dict, v: dict, s: dict, t: int, learning_rate = None, cache = None,
+                    beta1 = float, beta2 = float,  epsilon = float) -> tuple[np.ndarray, dict, float, dict, dict, dict, float]:
         '''
         Sequential (sequence) that puts all the calculations together
 
@@ -33,8 +34,9 @@ class Sequential:
         # 3. Apply backprop to find derivative/gradients
         gradients = Backprop(X, Y, cache)
 
-        # 4. Use gradients to apply gradient descent
-        params = gradient_descent(params, gradients, learning_rate, num_layers)
+        # 4. Update parameters using Adam
+        t = t + 1.
+        params, v, s, _, _= Adam(params, gradients, v, s, t, learning_rate, beta1, beta2, epsilon)
 
-        return a4, cache, loss, params
+        return a4, cache, loss, params, v, s, t
             
