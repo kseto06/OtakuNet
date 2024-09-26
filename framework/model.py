@@ -7,6 +7,11 @@ import math
 def linear(z: np.ndarray) -> np.ndarray:
     return z
 
+def linear_prime(z: np.ndarray) -> np.ndarray:
+    # Derivative of a linear function f(x) = x is just one
+    dZ = np.ones_like(z)
+    return dZ
+
 # Relu activation
 def relu(z: np.ndarray) -> np.ndarray:
     return np.maximum(0, z)
@@ -82,6 +87,8 @@ def ForwardProp(a_in: np.ndarray, params: list, activation: callable, layer: int
     cache[f'W{layer}'] = W
     cache[f'b{layer}'] = b
 
+    # print(cache)
+
     return a_out, cache
 
 # MSE Cost Function
@@ -122,24 +129,31 @@ def Backprop(a_in: np.ndarray, Y: np.ndarray, cache: dict) -> dict:
     gradients -- A dictionary with the gradients with respect to each parameter, activation and pre-activation variables
     """
     '''
+    # print(f'Backprop a_in shape: {a_in.shape[0]}. Transposed: {a_in.transpose().shape[0]}')
+
     gradients = {}
-    L = len(cache) // 4 # num of layers
+    L = len(cache) // 4 # num of paramater types (Z, A, W, b)
     m = a_in.shape[0] #num of exs
 
-    # Transpose Y for consistent shapes
-    Y = Y.transpose()
-
     # Initialize the gradient for the last layer
-    dA_prev = (1./m * cache[f'A{L}'] - Y)
+    dA_prev = (1./m * cache[f'A{L}'] - Y.T)
 
     # Based on backprop computation steps/formulae from Andrew Ng's DL Specialization:
     for layer in reversed(range(1, L+1)):
         #dA_prev represent dA[l-1]
-        dZ = dA_prev * relu_prime(cache[f'A{layer}'])
+
+        # Depending on the activation function. First layer is linear
+        if (layer == L):
+            dZ = dA_prev * linear_prime(cache[f'A{layer}'])
+        else:
+            dZ = dA_prev * relu_prime(cache[f'A{layer}'])
+        
+        # Exception for first layer in NN (last layer in backprop)
         if (layer > 1):
             dW = np.dot(dZ, cache[f'A{layer - 1}'].T)
         else: 
-            dW = np.dot(dZ, a_in)
+            dW = np.dot(dZ, a_in.T)
+
         dB = np.sum(dZ, axis=1, keepdims=True)
         dA_prev = np.dot(cache[f'W{layer}'].T, dZ)
 
@@ -147,6 +161,51 @@ def Backprop(a_in: np.ndarray, Y: np.ndarray, cache: dict) -> dict:
         gradients[f'dZ{layer}'] = dZ
         gradients[f'dW{layer}'] = dW
         gradients[f'db{layer}'] = dB
+
+    return gradients
+
+# Back propagation implementation to get gradients
+def Backprop_Revised(a_in: np.ndarray, Y: np.ndarray, cache: dict, inputs: np.ndarray, error_function = MSECost) -> dict:
+    '''
+    Arguments:
+    a_in -- input dataset, of shape (input size, number of examples)
+    Y -- true "label" vector 
+    cache -- cache output from Forward Prop. Dictionary containing [Z, a, w, b]
+    
+    Returns:
+    gradients -- A dictionary with the gradients with respect to each parameter, activation and pre-activation variables
+    """
+    '''
+    # print(f'Backprop a_in shape: {a_in.shape[0]}. Transposed: {a_in.transpose().shape[0]}')
+
+    gradients = {}
+    L = len(cache) // 4 # num of paramater types (Z, A, W, b)
+    m = a_in.shape[0] #num of exs
+    derivative_activation = None
+
+    # Get the pre-activations from the cache
+    z = []
+    for layer in range(1, L+1):
+        z.append(cache[f'Z{layer}'])
+
+    # Compute derivative loss
+    derivative_loss = (1./m * cache[f'A{L}'] - Y.T) #
+
+    # Main function
+    for layer in reversed(range(1, L+1)):
+
+        # Compute derivative of activation function with respect to the pre-activation
+        if layer == L:
+            derivative_activation = linear_prime(z[layer-1])
+        else:
+            derivative_activation = relu_prime(z[layer-1])
+
+        # Compute delta (hadamard of d_loss & d_activation)
+        delta = derivative_loss * derivative_activation
+
+        # Compute gradients
+        gradients[f'dW{layer}'] = np.multiply(inputs[layer].T, delta).T
+        gradients[f'db{layer}'] = np.sum(delta, axis=0, keepdims=True).T
 
     return gradients
 
@@ -212,7 +271,7 @@ def gradient_descent(params: dict, gradients: dict, learning_rate = 0.001, num_l
 
 # Function to initialize the parameters for the gradient and squared gradient
 def init_Adam(params: dict) -> tuple[dict, dict]:
-    L = len(params) // 2
+    L = len(params) // 2 # num of param types (dW, db)
     v = {}
     s = {}
 
@@ -234,7 +293,7 @@ def Adam(params: dict, gradients: dict, v: dict, s: dict, t: float, learning_rat
     if t < 0:
         print(f't = {t}. t must be greater than 0')
 
-    L = len(params) // 2
+    L = len(params) // 2 # num of param types (dW, db)
     v_corrected = {}
     s_corrected = {}
     
@@ -264,3 +323,9 @@ def Adam(params: dict, gradients: dict, v: dict, s: dict, t: float, learning_rat
         params[f'b{l+1}'] = params[f'b{l+1}'] - learning_rate * v_corrected[f'db{l+1}'] / (np.sqrt(s_corrected[f'db{l+1}'])+epsilon)
 
     return params, v, s, v_corrected, s_corrected
+
+# Scheduled learning rate decay function. Allows us to start with high learning rates and then gradually decrease it so GD doesn't overshoot near the minimum
+def schedule_lr_decay(learning_rate_initial: float, epoch_num: int, decay_rate: float, time_interval = 1000) -> float:
+    # Calculates updated learning rate with exponential weight decay:
+    learning_rate = learning_rate_initial / (1 + (decay_rate * (epoch_num / time_interval)))
+    return learning_rate    
