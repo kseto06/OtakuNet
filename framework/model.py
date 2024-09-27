@@ -92,28 +92,29 @@ def ForwardProp(a_in: np.ndarray, params: list, activation: callable, layer: int
     return a_out, cache
 
 # MSE Cost Function
-def MSECost(a_out: np.ndarray, Y: np.ndarray) -> float:
+def MSECost(y_pred: np.ndarray, Y: np.ndarray) -> float:
     '''
-    Compute mean squared error cost function
+    Compute mean squared error cost function.
+    For content-based, make sure y_pred already has their dot product computed
 
     Inputs:
-    a_out = output of forward prop (Dense)
+    y_pred = prediction of forward prop (Dense)
     Y = 'true' labels vector, same shape as output of forward prop
 
     Output:
     Cost = loss
     '''
-    # Transpose back a_out
-    a_out = a_out.transpose()
+    # Transpose back y_pred
+    y_pred = y_pred.transpose()
 
-    if a_out.shape != Y.shape:
-        print("a_out shape: ",a_out.shape)
+    if y_pred.shape[0] != Y.shape[0]:
+        print("y_pred shape: ",y_pred.shape)
         print("Y shape: ", Y.shape)
 
-    m = a_out.shape[0] #num of training examples
+    m = y_pred.shape[0] #num of training examples
     cost = 0.
     for i in range(m):
-        cost += (a_out[i] - Y[i])**2
+        cost += (y_pred[i] - Y[i])**2
 
     return (cost / (2*m))
 
@@ -132,10 +133,11 @@ def Backprop(a_in: np.ndarray, Y: np.ndarray, cache: dict) -> dict:
     # print(f'Backprop a_in shape: {a_in.shape[0]}. Transposed: {a_in.transpose().shape[0]}')
 
     gradients = {}
-    L = len(cache) // 4 # num of paramater types (Z, A, W, b)
+    L = len(cache) // 4 # num of layers based on paramater types (Z, A, W, b)
     m = a_in.shape[0] #num of exs
+    # print(m)
 
-    # Initialize the gradient for the last layer
+    # Initialize the gradient for the last layer ()
     dA_prev = (1./m * cache[f'A{L}'] - Y.T)
 
     # Based on backprop computation steps/formulae from Andrew Ng's DL Specialization:
@@ -144,16 +146,17 @@ def Backprop(a_in: np.ndarray, Y: np.ndarray, cache: dict) -> dict:
 
         # Depending on the activation function. First layer is linear
         if (layer == L):
-            dZ = dA_prev * linear_prime(cache[f'A{layer}'])
+            dZ = dA_prev * linear_prime(cache[f'Z{layer}'])
         else:
-            dZ = dA_prev * relu_prime(cache[f'A{layer}'])
+            dZ = dA_prev * relu_prime(cache[f'Z{layer}'])
         
         # Exception for first layer in NN (last layer in backprop)
         if (layer > 1):
             dW = np.dot(dZ, cache[f'A{layer - 1}'].T)
         else: 
-            dW = np.dot(dZ, a_in.T)
+            dW = np.dot(dZ, a_in)
 
+        # print(dZ.shape) --> (num of neurons, 64 exs)
         dB = np.sum(dZ, axis=1, keepdims=True)
         dA_prev = np.dot(cache[f'W{layer}'].T, dZ)
 
@@ -257,7 +260,57 @@ def generate_minibatches(X: np.ndarray, Y: np.ndarray, mini_batch_size = 64, see
         mini_batches.append(mini_batch)
 
     return mini_batches
-    
+
+def create_minibatches(X_user: np.ndarray, X_item: np.ndarray, Y: np.ndarray, mini_batch_size = 64, seed = 0) -> list:
+    '''
+    Generate a list of random minibatches from (X_user, X_item, Y)
+
+    Inputs:
+    X -- input data, shape[num of exs, input size]
+    Y -- true 'label' vector (ratings), of shape (num of exs, 1)
+
+    m/mini_batch_size mini-batches with full 64 exs
+    final minibatch if there isn't 64 is (m - mini_batch_size * m/mini_batch_size)
+    mini_batch_X = shuffled_X[:, i:j]
+    '''
+    np.random.seed(seed)
+    m = X_user.shape[0]
+    minibatches = []
+
+    if X_user.shape[0] != X_item.shape[0] or X_user.shape[0] != Y.shape[0] or X_user.shape[0] != X_item.shape[0]:
+        raise ValueError(f'X_user: {X_user.shape} != X_item: {X_item.shape} != Y: {Y.shape}')
+
+    # Shuffle X, Y
+    # permutation = list(np.random.permutation(m))
+    try:
+        permutation = list(np.random.permutation(m))
+        shuffled_X_user = X_user[permutation, :]
+        shuffled_X_item = X_item[permutation, :]
+        shuffled_Y = Y[permutation, :].reshape((m, 1)) #Y is 1D
+    except IndexError as e:
+        print("Error: ", e)
+
+    # Creating the mini-batch
+    num_minibatches = math.floor(m / mini_batch_size)
+    for k in range(0, num_minibatches): #Create a counter to count the minibatches without repeating
+        # By formula given above
+        minibatch_X_user = shuffled_X_user[k*mini_batch_size : (k+1)*mini_batch_size, :]
+        minibatch_X_item = shuffled_X_item[k*mini_batch_size : (k+1)*mini_batch_size, :]
+        minibatch_Y      = shuffled_Y[k*mini_batch_size : (k+1)*mini_batch_size, :]
+        minibatch = (minibatch_X_user, minibatch_X_item, minibatch_Y) #Grouping
+        minibatches.append(minibatch)
+
+    #Handling the case where the last mini-batch may < mini_batch_size
+    if m % mini_batch_size != 0:
+        # Apply the "last batch" formula
+        minibatch_X_user = shuffled_X_user[int(m/mini_batch_size)*mini_batch_size:, :]
+        minibatch_X_item = shuffled_X_item[int(m/mini_batch_size)*mini_batch_size:, :]
+        minibatch_Y      = shuffled_Y[int(m/mini_batch_size)*mini_batch_size:, :]
+        minibatch = (minibatch_X_user, minibatch_X_item, minibatch_Y) #Grouping
+        minibatches.append(minibatch)
+
+    return minibatches
+
 # Function to perform one update step (epoch) of gradient descent
 def gradient_descent(params: dict, gradients: dict, learning_rate = 0.001, num_layers = 3) -> dict:
     L = len(params) // num_layers #num of layers in NN's
