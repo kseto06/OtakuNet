@@ -107,7 +107,7 @@ def train_test_split(X, train_size, random_state = None, shuffle = True):
     if shuffle: 
         np.random.shuffle(indices)
     
-      #Split indices for train and test values
+    #Split indices for train and test values
     train_indices = indices[:m_test] #values up to the number of wanted test values
     test_indices = indices[m_test:]
 
@@ -115,9 +115,10 @@ def train_test_split(X, train_size, random_state = None, shuffle = True):
     return X[train_indices], X[test_indices]
 
 # L2 Normalization Formula
-def l2_normalize(vector: np.ndarray, axis: int) -> np.ndarray:
+def l2_normalize(vector: np.ndarray, axis: int, epsilon = 1e-10) -> np.ndarray:
     # Normalize the vector
     l2_norm = np.sqrt(np.sum(np.power(vector, 2), axis=axis, keepdims=True))
+
     # Transform into a unit vector
-    normalized_vector = vector / l2_norm
+    normalized_vector = vector / (l2_norm + epsilon) # epsilon to prevent potential division by zero.
     return normalized_vector
