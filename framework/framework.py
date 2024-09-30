@@ -86,13 +86,15 @@ def Bayesian_Rating(anime_df: pd.DataFrame):
 # Function for the weighted average of the rating values
 def weighted_average(df: pd.DataFrame, genres: List[str]) -> pd.DataFrame:
     # Calculate the weighted genre scores - this makes genres from highly-rated animes more significant
-    for genre in genres:
-        df[genre] = df[genre] * df['Bayesian Rating']
 
     # Aggregation and Normalization:
-    # Now can sum user's genres / sum of ratings, and divide the score for normalization of weighted values
+    '''
+    Now can sum all genres that the user rated / sum of Bayesian ratings, and divide the score for normalization of weighted values
+    The weighted genre scores divides the basic genre scores and the summed ratings, giving new genres scores more weight. 
+    Basically higher rated genres by users have more "points" b/c of weighted avg
+    '''
     user_genre_scores = df.groupby('user_id')[genres].sum()
-    user_summed_ratings = df.groupby('user_id')['Bayesian Rating'].sum()
+    user_summed_ratings = df.groupby('user_id')['Bayesian Rating'].sum() 
     user_genre_scores = user_genre_scores.div(user_summed_ratings, axis=0) #Divide the scores and ratings for the weighted average
     return user_genre_scores
 
@@ -131,10 +133,11 @@ def train_test_split(X, train_size, random_state = None, shuffle = True):
     return X[train_indices], X[test_indices]
 
 # L2 Normalization Formula
-def l2_normalize(vector: np.ndarray, axis: int, epsilon = 1e-10) -> np.ndarray:
+def l2_normalize(vector: np.ndarray, axis: int, epsilon = 1e-8) -> np.ndarray:
     # Normalize the vector
-    l2_norm = np.sqrt(np.sum(np.power(vector, 2), axis=axis, keepdims=True))
+    l2_norm = np.sqrt(np.sum(np.square(vector), axis=axis, keepdims=True))
 
     # Transform into a unit vector
+    # print(l2_norm)
     normalized_vector = vector / (l2_norm + epsilon) # epsilon to prevent potential division by zero.
     return normalized_vector
