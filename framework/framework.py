@@ -23,6 +23,22 @@ def zscore_normalization(df: pd.DataFrame, genres: List[str]) -> pd.DataFrame:
 
     return df
 
+def np_zscore_normalization(df: pd.DataFrame, genres: List[str]) -> pd.DataFrame:
+    # Get the genres
+    genre_df = df[genres]
+
+    # Compute z-scores
+    genre_df = genre_df.T
+    stdev = np.std(genre_df, axis=0)
+    mean = np.mean(genre_df, axis=0)
+    z_scores = (genre_df - mean) / stdev
+    z_scores = z_scores.T #Transpose back
+
+    df[genres] = z_scores
+
+    return df
+
+
 # Function for the MinMax Scaling of values
 def MinMaxScaler(y: np.array, min = -1, max = 1):
     '''
@@ -34,7 +50,7 @@ def MinMaxScaler(y: np.array, min = -1, max = 1):
     X_scaled = X_std * (max - min) + min
 
     '''
-    y_std = (y - y.min()) / (y.max() - y.min())
+    y_std = (y - np.min(y)) / (np.max(y) - np.min(y))
     y_scaled = y_std * (max - min) + min
     return y_scaled
 
