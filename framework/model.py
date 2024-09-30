@@ -33,6 +33,7 @@ def init_params(layer_dimensions: list) -> dict:
     params = {}
     L = len(layer_dimensions) # Number of layers in NN
 
+    # NOTE: Starts at layer 1, so that we can retreive the dimensions of the input layer
     for layer in range(1, L):
         # Weight (strength of the connection from neuron j to i) matrix. Generates a matrix of shape[num units in current layer, num units in prev layer]
         # Scaled by He initialization for ReLU, maintaining variance of activations across layers
@@ -79,7 +80,7 @@ def ForwardProp(a_in: np.ndarray, params: list, activation: callable, layer: int
         a_in = a_in.transpose()
     
     # print(f"After transposing: a_in shape = {a_in.shape}")
-    z = np.dot(W, a_in) + b
+    z = np.dot(W, a_in) + b #Ex: In the 1st layer, this computes: [256, 22] . [22, 64]
     a_out = activation(z)
 
     # Store the cache values to use in backprop
@@ -118,6 +119,16 @@ def MSECost(y_pred: np.ndarray, Y: np.ndarray) -> float:
         cost += (y_pred[i] - Y[i])**2
 
     return (cost / (2*m))
+
+def ValidationLoss(X_user_cv: np.ndarray, X_item_cv: np.ndarray, params_u: dict, params_i: dict, Y_cv: np.ndarray, current_cv_loss: float) -> float:
+    # Compute predictions for the inputted cv set:
+    Y_pred = predict(item_test=X_item_cv, user_test=X_user_cv, params_i=params_i, params_u=params_u)
+
+    # Compute the MSE Loss function 
+    current_cv_loss += MSECost(Y_pred.T, Y_cv)
+
+    return current_cv_loss
+
 
 # Back propagation implementation to get gradients
 def Backprop(a_in: np.ndarray, Y: np.ndarray, cache: dict) -> dict:
@@ -314,10 +325,11 @@ def create_minibatches(X_user: np.ndarray, X_item: np.ndarray, Y: np.ndarray, mi
 
 # Function to perform one update step (epoch) of gradient descent
 def gradient_descent(params: dict, gradients: dict, learning_rate = 0.001, num_layers = 3) -> dict:
-    L = len(params) // num_layers #num of layers in NN's
+    L = len(params) // 2 #num of layers in NN's
 
     # Update rule for each parameter
     for l in range(1, L+1): #Start from 1 because w and b counts start from 1 (w1,w2...)
+        # print(l)
         params[f'W{l}'] = params[f'W{l}'] - learning_rate*gradients[f'dW{l}']
         params[f'b{l}'] = params[f'b{l}'] - learning_rate*gradients[f'db{l}']
         
@@ -407,7 +419,11 @@ def predict(item_test: np.ndarray, user_test: np.ndarray, params_u: dict, params
     a4_i = l2_normalize(vector=a4_i, axis=1)
 
     # 3. Current prediction (dot product):
-    y_pred = np.sum(np.dot(a4_u, a4_i.T), axis=1)
+    y_pred = np.zeros((a4_u.shape[0], 1))
+
+    # Compute dot product predictions into y_pred
+    for j in range(a4_u.shape[0]):
+        y_pred[j] = np.dot(a4_u[j], a4_i[j])
 
     # Final rating prediction
     return y_pred
@@ -417,11 +433,7 @@ def evaluate(y_pred: np.ndarray, y_test: np.ndarray) -> None:
     # Calculate loss
     loss = MSECost(y_pred, y_test)
 
-    # Calculate % accuracy
-    mae = np.mean(np.abs(y_pred - y_test))
-    accuracy = (1 - (mae / (np.max(y_test) - np.min(y_test))))*100
-
     # Print results
-    print(f'Test Loss: {loss} | Test Accuracy: {accuracy}')
+    print(f'Test Loss: {loss}')
     
     return None
