@@ -2,6 +2,7 @@
 
 import numpy as np #Only np allowed, to speed up computational time for linalg computations
 import math
+from framework import l2_normalize
 
 # Linear activation
 def linear(z: np.ndarray) -> np.ndarray:
@@ -382,3 +383,45 @@ def schedule_lr_decay(learning_rate_initial: float, epoch_num: int, decay_rate: 
     # Calculates updated learning rate with exponential weight decay:
     learning_rate = learning_rate_initial / (1 + (decay_rate * (epoch_num / time_interval)))
     return learning_rate    
+
+# Predict function (to get y_pred) -- basically a ForwardProp
+def predict(item_test: np.ndarray, user_test: np.ndarray, params_u: dict, params_i: dict, cache_u = dict(), cache_i = dict()) -> np.ndarray:
+    # 1a. Forward prop with user 
+    a1_u, cache_u = ForwardProp(user_test, params_u, relu, 1, cache_u) #cache_u empty on the 1st layer
+    a2_u, cache_u = ForwardProp(a1_u, params_u, relu, 2, cache_u) 
+    a3_u, cache_u = ForwardProp(a2_u, params_u, relu, 3, cache_u)
+    a4_u, cache_u = ForwardProp(a3_u, params_u, linear, 4, cache_u)
+
+    # 1b. Forward prop with items
+    a1_i, cache_i = ForwardProp(item_test, params_i, relu, 1, cache_i) #cache_i empty on the 1st layer
+    a2_i, cache_i = ForwardProp(a1_i, params_i, relu, 2, cache_i) 
+    a3_i, cache_i = ForwardProp(a2_i, params_i, relu, 3, cache_i)
+    a4_i, cache_i = ForwardProp(a3_i, params_i, linear, 4, cache_i)
+
+    # 1c. Transpose back the vectors to correct shape
+    a4_u = a4_u.T
+    a4_i = a4_i.T
+
+    # 2. L2 Normalization of vectors
+    a4_u = l2_normalize(vector=a4_u, axis=1)
+    a4_i = l2_normalize(vector=a4_i, axis=1)
+
+    # 3. Current prediction (dot product):
+    y_pred = np.sum(np.dot(a4_u, a4_i.T), axis=1)
+
+    # Final rating prediction
+    return y_pred
+
+#Evaluate function -- return the loss and accuracy of the model on test sets
+def evaluate(y_pred: np.ndarray, y_test: np.ndarray) -> None:
+    # Calculate loss
+    loss = MSECost(y_pred, y_test)
+
+    # Calculate % accuracy
+    mae = np.mean(np.abs(y_pred - y_test))
+    accuracy = (1 - (mae / (np.max(y_test) - np.min(y_test))))*100
+
+    # Print results
+    print(f'Test Loss: {loss} | Test Accuracy: {accuracy}')
+    
+    return None
