@@ -38,6 +38,24 @@ def np_zscore_normalization(df: pd.DataFrame, genres: List[str]) -> pd.DataFrame
 
     return df
 
+def pd_zscore_normalization(df: pd.DataFrame, genres: List[str], epsilon: float = 1e-8) -> pd.DataFrame:
+    # Get the genres
+    genre_df = df[genres]
+
+    # Compute z-scores
+    mean = genre_df.mean()
+    stdev = genre_df.std()
+
+    # Avoid division by zero that can cause NaN's
+    stdev = np.where(stdev == 0, epsilon, stdev)
+
+    # Compute z-scores
+    z_scores = (genre_df - mean) / stdev
+
+    df[genres] = z_scores
+
+    return df
+
 
 # Function for the MinMax Scaling of values
 def MinMaxScaler(y: np.array, min = -1, max = 1):
@@ -135,9 +153,10 @@ def train_test_split(X, train_size, random_state = None, shuffle = True):
 # L2 Normalization Formula
 def l2_normalize(vector: np.ndarray, axis: int, epsilon = 1e-8) -> np.ndarray:
     # Normalize the vector
-    l2_norm = np.sqrt(np.sum(np.square(vector), axis=axis, keepdims=True))
+    normalized = vector / np.sqrt(np.sum(np.square(vector), axis=axis, keepdims=True))
 
-    # Transform into a unit vector
-    # print(l2_norm)
-    normalized_vector = vector / (l2_norm + epsilon) # epsilon to prevent potential division by zero.
-    return normalized_vector
+    if (vector.shape != normalized.shape):
+        print("Normalization shape not kept")
+    
+
+    return normalized
