@@ -64,36 +64,42 @@ class Sequential:
         # 1a. Forward prop with user 
         a1_u, cache_u = ForwardProp(X_u, params_u, relu, 1, cache_u) #cache_u empty on the 1st layer
         a2_u, cache_u = ForwardProp(a1_u, params_u, relu, 2, cache_u) 
-        a3_u, cache_u = ForwardProp(a2_u, params_u, relu, 3, cache_u)
-        a4_u, cache_u = ForwardProp(a3_u, params_u, linear, 4, cache_u)
+        a3_u, cache_u = ForwardProp(a2_u, params_u, linear, 3, cache_u)
 
         # 1b. Forward prop with items
         a1_i, cache_i = ForwardProp(X_i, params_i, relu, 1, cache_i) #cache_i empty on the 1st layer
         a2_i, cache_i = ForwardProp(a1_i, params_i, relu, 2, cache_i) 
-        a3_i, cache_i = ForwardProp(a2_i, params_i, relu, 3, cache_i)
-        a4_i, cache_i = ForwardProp(a3_i, params_i, linear, 4, cache_i)
+        a3_i, cache_i = ForwardProp(a2_i, params_i, linear, 3, cache_i)
 
         # 1c. Transpose back the vectors to correct shape
-        a4_u = a4_u.T
-        a4_i = a4_i.T
+        a3_u = a3_u.T
+        a3_i = a3_i.T
+
+        # print(a3_i.shape, a3_u.shape)
 
         # 2. L2 Normalization of vectors
-        a4_u = l2_normalize(vector=a4_u, axis=1)
-        a4_i = l2_normalize(vector=a4_i, axis=1)
+        a3_u = l2_normalize(vector=a3_u, axis=1)
+        a3_i = l2_normalize(vector=a3_i, axis=1)
 
         # 3. Current prediction (dot product):
-        y_pred = np.sum(np.dot(a4_u, a4_i.T), axis=1)
+        # Initialize an empty array to store the dot product predictions
+        y_pred = np.zeros((a3_u.shape[0], 1))
 
-        # print(f'a4_u shape: {a4_u.shape}, a4_i shape: {a4_i.shape}, y_pred shape: {y_pred.shape}')
+        # Compute dot product predictions into y_pred
+        for j in range(a3_u.shape[0]):
+            
+            y_pred[j] = np.dot(a3_u[j], a3_i[j])
 
-        # 2. Using the result of the NN (a3) to compute loss with MSE:
-        loss = MSECost(y_pred, Y)
+        # print(f'a3_u shape: {a3_u.shape}, a3_i shape: {a3_i.shape}, y_pred shape: {y_pred.shape}')
 
-        # 3. Apply backprop to find derivative/gradients
+        # 4. Using the result of the NN (a3) to compute loss with MSE:
+        loss = MSECost(y_pred.T, Y)
+
+        # 5. Apply backprop to find derivative/gradients
         gradients_u = Backprop(X_u, Y, cache_u)
         gradients_i = Backprop(X_i, Y, cache_i)
 
-        # 4. Update parameters using Adam for user and item
+        # 6. Update parameters using Adam for user and item
         t = t + 1.
         params_u, v_u, s_u, _, _ = Adam(params_u, gradients_u, v_u, s_u, t, learning_rate, beta1, beta2, epsilon)
         params_i, v_i, s_i, _, _ = Adam(params_i, gradients_i, v_i, s_i, t, learning_rate, beta1, beta2, epsilon)

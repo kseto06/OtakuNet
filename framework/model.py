@@ -401,29 +401,27 @@ def predict(item_test: np.ndarray, user_test: np.ndarray, params_u: dict, params
     # 1a. Forward prop with user 
     a1_u, cache_u = ForwardProp(user_test, params_u, relu, 1, cache_u) #cache_u empty on the 1st layer
     a2_u, cache_u = ForwardProp(a1_u, params_u, relu, 2, cache_u) 
-    a3_u, cache_u = ForwardProp(a2_u, params_u, relu, 3, cache_u)
-    a4_u, cache_u = ForwardProp(a3_u, params_u, linear, 4, cache_u)
+    a3_u, cache_u = ForwardProp(a2_u, params_u, linear, 3, cache_u)
 
     # 1b. Forward prop with items
     a1_i, cache_i = ForwardProp(item_test, params_i, relu, 1, cache_i) #cache_i empty on the 1st layer
     a2_i, cache_i = ForwardProp(a1_i, params_i, relu, 2, cache_i) 
-    a3_i, cache_i = ForwardProp(a2_i, params_i, relu, 3, cache_i)
-    a4_i, cache_i = ForwardProp(a3_i, params_i, linear, 4, cache_i)
+    a3_i, cache_i = ForwardProp(a2_i, params_i, linear, 3, cache_i)
 
     # 1c. Transpose back the vectors to correct shape
-    a4_u = a4_u.T
-    a4_i = a4_i.T
+    a3_u = a3_u.T
+    a3_i = a3_i.T
 
     # 2. L2 Normalization of vectors
-    a4_u = l2_normalize(vector=a4_u, axis=1)
-    a4_i = l2_normalize(vector=a4_i, axis=1)
+    a3_u = l2_normalize(vector=a3_u, axis=1)
+    a3_i = l2_normalize(vector=a3_i, axis=1)
 
     # 3. Current prediction (dot product):
-    y_pred = np.zeros((a4_u.shape[0], 1))
+    y_pred = np.zeros((a3_u.shape[0], 1))
 
     # Compute dot product predictions into y_pred
-    for j in range(a4_u.shape[0]):
-        y_pred[j] = np.dot(a4_u[j], a4_i[j])
+    for j in range(a3_u.shape[0]):
+        y_pred[j] = np.dot(a3_u[j], a3_i[j])
 
     # Final rating prediction
     return y_pred
