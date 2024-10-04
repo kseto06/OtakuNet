@@ -38,7 +38,7 @@ def np_zscore_normalization(df: pd.DataFrame, genres: List[str]) -> pd.DataFrame
 
     return df
 
-def pd_zscore_normalization(df: pd.DataFrame, genres: List[str], epsilon: float = 1e-8) -> pd.DataFrame:
+def pd_zscore_normalization(df: pd.DataFrame, genres: List[str], epsilon: float = 1e-8) -> tuple[pd.DataFrame, float, float]:
     # Get the genres
     genre_df = df[genres]
 
@@ -54,7 +54,7 @@ def pd_zscore_normalization(df: pd.DataFrame, genres: List[str], epsilon: float 
 
     df[genres] = z_scores
 
-    return df
+    return df, mean, stdev
 
 
 # Function for the MinMax Scaling of values
@@ -71,6 +71,14 @@ def MinMaxScaler(y: np.array, min = -1, max = 1):
     y_std = (y - np.min(y)) / (np.max(y) - np.min(y))
     y_scaled = y_std * (max - min) + min
     return y_scaled
+
+# Function to reverse MinMax Scaling
+def MinMaxInverse(scaled_values: np.ndarray, y_min: float, y_max: float) -> np.ndarray:
+    '''
+    Returns the unscaled array of values.
+    '''
+    return scaled_values * y_min + (y_max - y_min)
+
 
 # Function for the Bayesian average 
 def Bayesian_Rating(anime_df: pd.DataFrame):
