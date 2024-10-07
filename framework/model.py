@@ -179,100 +179,6 @@ def Backprop(a_in: np.ndarray, Y: np.ndarray, cache: dict) -> dict:
 
     return gradients
 
-# Back propagation implementation to get gradients
-def Backprop_Revised(a_in: np.ndarray, Y: np.ndarray, cache: dict, inputs: np.ndarray, error_function = MSECost) -> dict:
-    '''
-    Arguments:
-    a_in -- input dataset, of shape (input size, number of examples)
-    Y -- true "label" vector 
-    cache -- cache output from Forward Prop. Dictionary containing [Z, a, w, b]
-    
-    Returns:
-    gradients -- A dictionary with the gradients with respect to each parameter, activation and pre-activation variables
-    """
-    '''
-    # print(f'Backprop a_in shape: {a_in.shape[0]}. Transposed: {a_in.transpose().shape[0]}')
-
-    gradients = {}
-    L = len(cache) // 4 # num of paramater types (Z, A, W, b)
-    m = a_in.shape[0] #num of exs
-    derivative_activation = None
-
-    # Get the pre-activations from the cache
-    z = []
-    for layer in range(1, L+1):
-        z.append(cache[f'Z{layer}'])
-
-    # Compute derivative loss
-    derivative_loss = (1./m * cache[f'A{L}'] - Y.T) #
-
-    # Main function
-    for layer in reversed(range(1, L+1)):
-
-        # Compute derivative of activation function with respect to the pre-activation
-        if layer == L:
-            derivative_activation = linear_prime(z[layer-1])
-        else:
-            derivative_activation = relu_prime(z[layer-1])
-
-        # Compute delta (hadamard of d_loss & d_activation)
-        delta = derivative_loss * derivative_activation
-
-        # Compute gradients
-        gradients[f'dW{layer}'] = np.multiply(inputs[layer].T, delta).T
-        gradients[f'db{layer}'] = np.sum(delta, axis=0, keepdims=True).T
-
-    return gradients
-
-def generate_minibatches(X: np.ndarray, Y: np.ndarray, mini_batch_size = 64, seed = 0) -> list:
-    '''
-    Generate a list of random minibatches from (X, Y)
-
-    Inputs:
-    X -- input data, shape[num of exs, input size]
-    Y -- true 'label' vector (ratings), of shape (num of exs, 1)
-
-    m/mini_batch_size mini-batches with full 64 exs
-    final minibatch if there isn't 64 is (m - mini_batch_size * m/mini_batch_size)
-    mini_batch_X = shuffled_X[:, i:j]
-    '''
-    np.random.seed(seed)
-    m = X.shape[0]
-    mini_batches = []
-
-    if (X.shape[0] != Y.shape[0]):
-        print(f'X: {X.shape} != Y: {Y.shape}')
-
-    # Shuffle X, Y
-    # permutation = list(np.random.permutation(m))
-    try:
-        permutation = list(np.random.permutation(m))
-        shuffled_X = X[permutation, :]
-        shuffled_Y = Y[permutation, :].reshape((m, 1)) #Y is 1D
-    except IndexError as e:
-        print("Error: ", e)
-
-    inc = mini_batch_size
-
-    # Creating the mini-batch
-    num_minibatches = math.floor(m / mini_batch_size)
-    for k in range(0, num_minibatches): #Create a counter to count the minibatches without repeating
-        # By formula given above
-        mini_batch_X = shuffled_X[k*mini_batch_size : (k+1)*mini_batch_size, :]
-        mini_batch_Y = shuffled_Y[k*mini_batch_size : (k+1)*mini_batch_size, :]
-        mini_batch = (mini_batch_X, mini_batch_Y) #Grouping
-        mini_batches.append(mini_batch)
-
-    #Handling the case where the last mini-batch may < mini_batch_size
-    if m % mini_batch_size != 0:
-        # Apply the "last batch" formula
-        mini_batch_X = shuffled_X[int(m/mini_batch_size)*mini_batch_size:, :]
-        mini_batch_Y = shuffled_Y[int(m/mini_batch_size)*mini_batch_size:, :]
-        mini_batch = (mini_batch_X, mini_batch_Y) #Grouping
-        mini_batches.append(mini_batch)
-
-    return mini_batches
-
 def create_minibatches(X_user: np.ndarray, X_item: np.ndarray, Y: np.ndarray, mini_batch_size = 64, seed = 0) -> list:
     '''
     Generate a list of random minibatches from (X_user, X_item, Y)
@@ -365,10 +271,6 @@ def Adam(params: dict, gradients: dict, v: dict, s: dict, t: float, learning_rat
     
     # Perform Adam update
     for l in range(L):
-        # print(beta1)
-        # print(beta2)
-        # print(1-np.power(beta1, t))
-
         # Calculate momentums with beta1
         v[f'dW{l+1}'] = beta1 * v[f'dW{l+1}'] + (1-beta1) * gradients[f'dW{l+1}']
         v[f'db{l+1}'] = beta1 * v[f'db{l+1}'] + (1-beta1) * gradients[f'db{l+1}']

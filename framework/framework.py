@@ -166,5 +166,4 @@ def l2_normalize(vector: np.ndarray, axis: int, epsilon = 1e-8) -> np.ndarray:
     if (vector.shape != normalized.shape):
         print("Normalization shape not kept")
     
-
     return normalized
