@@ -2,7 +2,7 @@
 
 <div align="center">
   OtakuNet is an Content-Based Recommendation System App that recommends animes to users based on their personal ratings of genres. 
-  Using only NumPy for faster linear algebra computations and Pandas for data organization, OtakuNet is trained on a neural network framework built from scratch. The model is trained using a dual neural network architecture for users and animes.
+  Using only NumPy for faster linear algebra computations and Pandas for data organization, OtakuNet is trained on a neural network framework built from scratch. The model is trained using a dual neural network architecture to train both users and animes.
 </div>
 
 <br>
