@@ -150,7 +150,7 @@ def Backprop(a_in: np.ndarray, Y: np.ndarray, cache: dict) -> dict:
     # print(m)
 
     # Initialize the gradient for the last layer ()
-    dA_prev = (1./m * cache[f'A{L}'] - Y.T)
+    dA_prev = (1./m * (cache[f'A{L}'] - Y.T))
 
     # Based on backprop computation steps/formulae from Andrew Ng's DL Specialization:
     for layer in reversed(range(1, L+1)):
